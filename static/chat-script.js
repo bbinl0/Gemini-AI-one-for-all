@@ -26,6 +26,7 @@ const GEMINI_MODELS = {
 let currentModel = "gemini-2.0-flash"; // Default model
 let chatHistory = []; // To store chat history for context
 let lastGeneratedImage = null; // Store last generated image for editing
+let userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; // Auto-detect user timezone
 
 // Function to parse code blocks and highlight them
 function parseCodeBlocks(message) {
@@ -44,6 +45,285 @@ function parseCodeBlocks(message) {
 
     result += message.slice(lastIndex);
     return result.trim() || message;
+}
+
+// Function to get formatted time for any country/timezone
+function getFormattedTime(country, timeZone) {
+    const now = new Date();
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'long',
+        timeZone: timeZone 
+    };
+    
+    // Use bn-BD locale for Bengali formatting
+    const formattedTime = now.toLocaleString('bn-BD', options);
+    
+    return `এখন ${country} এর সময়: ${formattedTime}`;
+}
+
+// Function to detect time-related queries in multiple languages
+function isTimeQuery(prompt) {
+    const timePatterns = [
+        // Bengali patterns
+        'কয়টা বাজে', 'কত বাজে', 'সময় কত', 'সময় কি', 'এখন কয়টা', 'বর্তমান সময়',
+        'এখনকার সময়', 'এখন কত বজে', 'টাইম কত', 'কত টাইম', 'সময় বলো', 'সময় জানতে চাই',
+        
+        // English patterns
+        'what time is it', 'current time', 'what\'s the time', 'tell me the time',
+        'time now', 'what time', 'show time', 'display time', 'get time',
+        
+        // Hindi patterns
+        'समय क्या है', 'अभी कितने बजे हैं', 'वक्त क्या है',
+        
+        // Urdu patterns
+        'وقت کیا ہے', 'اب کتنے بجے ہیں', 'وقت بتاؤ',
+        
+        // Arabic patterns
+        'كم الساعة', 'ما الوقت', 'الوقت الآن',
+        
+        // Spanish patterns
+        'qué hora es', 'hora actual', 'dime la hora',
+        
+        // French patterns
+        'quelle heure est-il', 'heure actuelle', 'dis-moi l\'heure',
+        
+        // Common time-related words
+        'time', 'clock', 'hour', 'minute', 'সময়', 'ঘন্টা', 'মিনিট'
+    ];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    return timePatterns.some(pattern => lowerPrompt.includes(pattern.toLowerCase()));
+}
+
+// Function to detect date calculation queries
+function isDateCalculationQuery(prompt) {
+    const datePatterns = [
+        // Bengali patterns
+        'দিন পর', 'মাস পর', 'বছর পর', 'দিন আগে', 'মাস আগে', 'বছর আগে',
+        'তারিখ', 'বার', 'কি বার', 'কোন বার', 'কোন দিন', 'কোন মাস',
+        'থেকে', 'পর্যন্ত', 'কত দিন', 'কত মাস', 'কত বছর',
+        
+        // English patterns
+        'days from now', 'months from now', 'years from now',
+        'days ago', 'months ago', 'years ago',
+        'what day', 'which day', 'what date', 'calculate date',
+        'from today', 'after today', 'before today'
+    ];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    return datePatterns.some(pattern => lowerPrompt.includes(pattern.toLowerCase()));
+}
+
+// Function to detect international time queries
+function isInternationalTimeQuery(prompt) {
+    const countries = [
+        // Countries in Bengali
+        'আমেরিকা', 'যুক্তরাষ্ট্র', 'ব্রিটেন', 'ইংল্যান্ড', 'জার্মানি', 'ফ্রান্স',
+        'ভারত', 'চীন', 'জাপান', 'অস্ট্রেলিয়া', 'কানাডা', 'রাশিয়া',
+        'সৌদি আরব', 'দুবাই', 'সিঙ্গাপুর', 'মালয়েশিয়া', 'থাইল্যান্ড',
+        
+        // Countries in English
+        'america', 'usa', 'united states', 'britain', 'england', 'uk',
+        'germany', 'france', 'india', 'china', 'japan', 'australia',
+        'canada', 'russia', 'saudi arabia', 'dubai', 'singapore',
+        'malaysia', 'thailand', 'pakistan', 'turkey', 'italy', 'spain',
+        
+        // Cities
+        'new york', 'london', 'paris', 'tokyo', 'sydney', 'toronto',
+        'moscow', 'dubai', 'singapore', 'kuala lumpur', 'bangkok',
+        'delhi', 'mumbai', 'beijing', 'shanghai', 'dhaka', 'ঢাকা',
+        'চট্টগ্রাম', 'কক্সবাজার'
+    ];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    return countries.some(country => lowerPrompt.includes(country.toLowerCase())) && 
+           (isTimeQuery(prompt) || lowerPrompt.includes('time'));
+}
+
+// Function to calculate future/past dates
+function calculateDate(prompt) {
+    const now = new Date();
+    let resultDate = new Date(now);
+    
+    // Extract numbers and time units from the prompt
+    const numberMatch = prompt.match(/(\d+)/);
+    const number = numberMatch ? parseInt(numberMatch[1]) : 0;
+    
+    const lowerPrompt = prompt.toLowerCase();
+    
+    if (lowerPrompt.includes('দিন') || lowerPrompt.includes('day')) {
+        if (lowerPrompt.includes('পর') || lowerPrompt.includes('from now') || lowerPrompt.includes('after')) {
+            resultDate.setDate(resultDate.getDate() + number);
+        } else if (lowerPrompt.includes('আগে') || lowerPrompt.includes('ago') || lowerPrompt.includes('before')) {
+            resultDate.setDate(resultDate.getDate() - number);
+        }
+    } else if (lowerPrompt.includes('মাস') || lowerPrompt.includes('month')) {
+        if (lowerPrompt.includes('পর') || lowerPrompt.includes('from now') || lowerPrompt.includes('after')) {
+            resultDate.setMonth(resultDate.getMonth() + number);
+        } else if (lowerPrompt.includes('আগে') || lowerPrompt.includes('ago') || lowerPrompt.includes('before')) {
+            resultDate.setMonth(resultDate.getMonth() - number);
+        }
+    } else if (lowerPrompt.includes('বছর') || lowerPrompt.includes('year')) {
+        if (lowerPrompt.includes('পর') || lowerPrompt.includes('from now') || lowerPrompt.includes('after')) {
+            resultDate.setFullYear(resultDate.getFullYear() + number);
+        } else if (lowerPrompt.includes('আগে') || lowerPrompt.includes('ago') || lowerPrompt.includes('before')) {
+            resultDate.setFullYear(resultDate.getFullYear() - number);
+        }
+    }
+    
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: userTimeZone
+    };
+    
+    const formattedDate = resultDate.toLocaleString('bn-BD', options);
+    const daysDiff = Math.floor((resultDate - now) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) {
+        return `আজ: ${formattedDate}`;
+    } else if (daysDiff > 0) {
+        return `${number} ${lowerPrompt.includes('দিন') ? 'দিন' : lowerPrompt.includes('মাস') ? 'মাস' : 'বছর'} পর: ${formattedDate} (আজ থেকে ${daysDiff} দিন পর)`;
+    } else {
+        return `${number} ${lowerPrompt.includes('দিন') ? 'দিন' : lowerPrompt.includes('মাস') ? 'মাস' : 'বছর'} আগে: ${formattedDate} (আজ থেকে ${Math.abs(daysDiff)} দিন আগে)`;
+    }
+}
+
+// Function to get international time based on country/city
+function getInternationalTime(prompt) {
+    const timeZoneMap = {
+        // USA
+        'america': 'America/New_York',
+        'usa': 'America/New_York', 
+        'united states': 'America/New_York',
+        'আমেরিকা': 'America/New_York',
+        'যুক্তরাষ্ট্র': 'America/New_York',
+        'new york': 'America/New_York',
+        'california': 'America/Los_Angeles',
+        
+        // UK
+        'britain': 'Europe/London',
+        'england': 'Europe/London',
+        'uk': 'Europe/London',
+        'ব্রিটেন': 'Europe/London',
+        'ইংল্যান্ড': 'Europe/London',
+        'london': 'Europe/London',
+        
+        // Europe
+        'germany': 'Europe/Berlin',
+        'জার্মানি': 'Europe/Berlin',
+        'france': 'Europe/Paris',
+        'ফ্রান্স': 'Europe/Paris',
+        'paris': 'Europe/Paris',
+        'italy': 'Europe/Rome',
+        'spain': 'Europe/Madrid',
+        
+        // Asia
+        'india': 'Asia/Kolkata',
+        'ভারত': 'Asia/Kolkata',
+        'delhi': 'Asia/Kolkata',
+        'mumbai': 'Asia/Kolkata',
+        'china': 'Asia/Shanghai',
+        'চীন': 'Asia/Shanghai',
+        'beijing': 'Asia/Shanghai',
+        'shanghai': 'Asia/Shanghai',
+        'japan': 'Asia/Tokyo',
+        'জাপান': 'Asia/Tokyo',
+        'tokyo': 'Asia/Tokyo',
+        'singapore': 'Asia/Singapore',
+        'সিঙ্গাপুর': 'Asia/Singapore',
+        'malaysia': 'Asia/Kuala_Lumpur',
+        'মালয়েশিয়া': 'Asia/Kuala_Lumpur',
+        'kuala lumpur': 'Asia/Kuala_Lumpur',
+        'thailand': 'Asia/Bangkok',
+        'থাইল্যান্ড': 'Asia/Bangkok',
+        'bangkok': 'Asia/Bangkok',
+        
+        // Middle East
+        'dubai': 'Asia/Dubai',
+        'দুবাই': 'Asia/Dubai',
+        'saudi arabia': 'Asia/Riyadh',
+        'সৌদি আরব': 'Asia/Riyadh',
+        
+        // Others
+        'australia': 'Australia/Sydney',
+        'অস্ট্রেলিয়া': 'Australia/Sydney',
+        'sydney': 'Australia/Sydney',
+        'canada': 'America/Toronto',
+        'কানাডা': 'America/Toronto',
+        'toronto': 'America/Toronto',
+        'russia': 'Europe/Moscow',
+        'রাশিয়া': 'Europe/Moscow',
+        'moscow': 'Europe/Moscow',
+        
+        // Bangladesh
+        'bangladesh': 'Asia/Dhaka',
+        'বাংলাদেশ': 'Asia/Dhaka',
+        'dhaka': 'Asia/Dhaka',
+        'ঢাকা': 'Asia/Dhaka',
+        'chittagong': 'Asia/Dhaka',
+        'চট্টগ্রাম': 'Asia/Dhaka'
+    };
+    
+    const lowerPrompt = prompt.toLowerCase();
+    
+    for (const [country, timeZone] of Object.entries(timeZoneMap)) {
+        if (lowerPrompt.includes(country.toLowerCase())) {
+            return getFormattedTime(country, timeZone);
+        }
+    }
+    
+    return null;
+}
+
+// Function to get current local time
+function getCurrentTime() {
+    const now = new Date();
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'long',
+        timeZone: userTimeZone
+    };
+    
+    const formattedTime = now.toLocaleString('bn-BD', options);
+    return `আপনার বর্তমান সময়: ${formattedTime}`;
+}
+
+// Function to handle time-related queries
+function handleTimeQuery(prompt) {
+    // Check for international time queries first
+    if (isInternationalTimeQuery(prompt)) {
+        const internationalTime = getInternationalTime(prompt);
+        if (internationalTime) {
+            return internationalTime;
+        }
+    }
+    
+    // Check for date calculations
+    if (isDateCalculationQuery(prompt)) {
+        return calculateDate(prompt);
+    }
+    
+    // Default to current local time
+    if (isTimeQuery(prompt)) {
+        return getCurrentTime();
+    }
+    
+    return null;
 }
 
 // Function to display messages in the chat window
@@ -68,7 +348,21 @@ function displayMessage(message, sender, imageSrc = null, isGeneratedImage = fal
                     </div>
                 </div>`;
         } else {
-            messageContent += `<img src="${imageSrc}" alt="User uploaded image" class="chat-image-preview" style="border-radius: 8px; margin-bottom: 10px;">`;
+            // For uploaded images, add edit button if it's from user
+            const imageId = 'uploaded-img-' + Date.now();
+            if (sender === 'user') {
+                messageContent += `
+                    <div class="uploaded-image-container">
+                        <img src="${imageSrc}" alt="User uploaded image" class="chat-image-preview" id="${imageId}" style="max-width: 400px; border-radius: 8px; margin-bottom: 10px;">
+                        <div class="image-actions">
+                            <button class="edit-btn" onclick="prepareUploadedImageForEdit('${imageId}', '${imageSrc}')">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                    </div>`;
+            } else {
+                messageContent += `<img src="${imageSrc}" alt="Image" class="chat-image-preview" style="border-radius: 8px; margin-bottom: 10px;">`;
+            }
         }
     }
     if (message) {
@@ -145,7 +439,7 @@ function isImageGenerationRequest(prompt) {
 }
 
 // Function to detect if user wants to edit an image
-function isImageEditRequest(prompt) {
+function isImageEditRequest(prompt, hasUploadedImage = false) {
     const editCommands = [
         '/edit', '/modify', '/change',
         'edit the image', 'edit image', 'modify the image', 'modify image',
@@ -154,7 +448,7 @@ function isImageEditRequest(prompt) {
     ];
     
     const lowerPrompt = prompt.toLowerCase();
-    return editCommands.some(command => lowerPrompt.includes(command)) && lastGeneratedImage;
+    return editCommands.some(command => lowerPrompt.includes(command)) && (lastGeneratedImage || hasUploadedImage);
 }
 
 // Function to extract edit prompt from edit request
@@ -318,8 +612,132 @@ function prepareImageForEdit(imageId) {
     }
 }
 
+// Function to prepare uploaded image for editing
+function prepareUploadedImageForEdit(imageId, imageSrc) {
+    const imageElement = document.getElementById(imageId);
+    if (imageElement) {
+        messageInput.value = `/edit `;
+        messageInput.focus();
+        
+        // Store the uploaded image data for editing
+        window.currentUploadedImageForEdit = {
+            id: imageId,
+            src: imageSrc,
+            element: imageElement
+        };
+        
+        // Add visual indicator that image is selected for editing
+        document.querySelectorAll('.chat-image-preview').forEach(img => img.classList.remove('selected-for-edit'));
+        imageElement.classList.add('selected-for-edit');
+    }
+}
+
+// Function to edit uploaded image from file
+async function editUploadedImage(editPrompt, imageFile) {
+    showTypingIndicator();
+    
+    try {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        formData.append('edit_prompt', editPrompt);
+        formData.append('style', 'photorealistic');
+        formData.append('aspect_ratio', '1:1');
+        
+        const response = await fetch(`${BASE_URL}/api/edit-uploaded`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        hideTypingIndicator();
+        
+        if (data.status === 'success' && data.image_base64) {
+            const imageDataUrl = `data:image/png;base64,${data.image_base64}`;
+            
+            // Update the last generated image with the edited version
+            lastGeneratedImage = {
+                dataUrl: imageDataUrl,
+                prompt: `Edited uploaded image: ${editPrompt}`,
+                timestamp: Date.now()
+            };
+            
+            displayMessage(`Here's your edited image: "${editPrompt}"`, 'bot', imageDataUrl, true);
+            addMessageToHistory(`Edited uploaded image: ${editPrompt}`, 'bot');
+        } else {
+            displayMessage(`Sorry, I couldn't edit the image. Error: ${data.error || 'Unknown error'}`, 'bot');
+            addMessageToHistory(`Image editing failed: ${data.error || 'Unknown error'}`, 'bot');
+        }
+    } catch (error) {
+        console.error('Error editing uploaded image:', error);
+        hideTypingIndicator();
+        displayMessage('An error occurred while editing the image.', 'bot');
+        addMessageToHistory('Image editing failed due to network error', 'bot');
+    }
+}
+
+// Function to edit uploaded image from chat (base64)
+async function editUploadedImageFromChat(editPrompt, imageDataUrl) {
+    showTypingIndicator();
+    
+    try {
+        // Convert data URL to blob
+        const response = await fetch(imageDataUrl);
+        const blob = await response.blob();
+        
+        const formData = new FormData();
+        formData.append('image', blob);
+        formData.append('edit_prompt', editPrompt);
+        formData.append('style', 'photorealistic');
+        formData.append('aspect_ratio', '1:1');
+        
+        const apiResponse = await fetch(`${BASE_URL}/api/edit-uploaded`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await apiResponse.json();
+        hideTypingIndicator();
+        
+        if (data.status === 'success' && data.image_base64) {
+            const newImageDataUrl = `data:image/png;base64,${data.image_base64}`;
+            
+            // Update the last generated image with the edited version
+            lastGeneratedImage = {
+                dataUrl: newImageDataUrl,
+                prompt: `Edited uploaded image: ${editPrompt}`,
+                timestamp: Date.now()
+            };
+            
+            displayMessage(`Here's your edited image: "${editPrompt}"`, 'bot', newImageDataUrl, true);
+            addMessageToHistory(`Edited uploaded image: ${editPrompt}`, 'bot');
+            
+            // Clear the current uploaded image reference
+            window.currentUploadedImageForEdit = null;
+        } else {
+            displayMessage(`Sorry, I couldn't edit the image. Error: ${data.error || 'Unknown error'}`, 'bot');
+            addMessageToHistory(`Image editing failed: ${data.error || 'Unknown error'}`, 'bot');
+        }
+    } catch (error) {
+        console.error('Error editing uploaded image from chat:', error);
+        hideTypingIndicator();
+        displayMessage('An error occurred while editing the image.', 'bot');
+        addMessageToHistory('Image editing failed due to network error', 'bot');
+    }
+}
+
 // Function to send message to API
 async function sendMessage(prompt, imageFile = null) {
+    // Check if this is a time-related query first
+    if (!imageFile) {
+        const timeResponse = handleTimeQuery(prompt);
+        if (timeResponse) {
+            displayMessage(timeResponse, 'bot');
+            addMessageToHistory(timeResponse, 'bot');
+            clearInputs();
+            return;
+        }
+    }
+    
     // Check if this is an image generation request
     if (!imageFile && isImageGenerationRequest(prompt)) {
         const imagePrompt = extractImagePrompt(prompt);
@@ -328,12 +746,34 @@ async function sendMessage(prompt, imageFile = null) {
         return;
     }
     
-    // Check if this is an image edit request
+    // Check if this is an image edit request with uploaded image
+    if (imageFile && isImageEditRequest(prompt, true)) {
+        const editPrompt = extractEditPrompt(prompt);
+        await editUploadedImage(editPrompt, imageFile);
+        clearInputs();
+        return;
+    }
+    
+    // Check if this is an edit request for a previously uploaded image
+    if (!imageFile && isImageEditRequest(prompt) && window.currentUploadedImageForEdit) {
+        const editPrompt = extractEditPrompt(prompt);
+        await editUploadedImageFromChat(editPrompt, window.currentUploadedImageForEdit.src);
+        clearInputs();
+        return;
+    }
+    
+    // Check if this is an image edit request with generated image
     if (!imageFile && isImageEditRequest(prompt) && lastGeneratedImage) {
         const editPrompt = extractEditPrompt(prompt);
         await editImage(editPrompt);
         clearInputs();
         return;
+    }
+    
+    // Handle image upload without text or with non-edit text
+    if (imageFile && (prompt === '' || prompt.trim() === '')) {
+        // If no text provided with image, auto-add "describe this image"
+        prompt = 'Describe this image in detail.';
     }
     
     showTypingIndicator();
@@ -380,10 +820,15 @@ async function sendMessage(prompt, imageFile = null) {
 
 // Event listener for send button
 sendButton.addEventListener('click', async () => {
-    const prompt = messageInput.value.trim();
+    let prompt = messageInput.value.trim();
     const imageFile = imageInput.files[0];
     
     if (prompt === '' && !imageFile) return;
+    
+    // If image uploaded but no text, auto-add description prompt
+    if (imageFile && (prompt === '' || prompt === undefined)) {
+        prompt = 'Describe this image in detail.';
+    }
     
     // Add user message to history
     addMessageToHistory(prompt, 'user');
@@ -391,7 +836,9 @@ sendButton.addEventListener('click', async () => {
     if (imageFile) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            displayMessage(prompt, 'user', e.target.result);
+            // Show appropriate message based on whether prompt was auto-generated
+            const displayPrompt = messageInput.value.trim() === '' ? 'Image uploaded (auto-analyzing)' : prompt;
+            displayMessage(displayPrompt, 'user', e.target.result);
             sendMessage(prompt, imageFile);
         };
         reader.readAsDataURL(imageFile);
@@ -413,7 +860,7 @@ messageInput.addEventListener('keypress', (e) => {
     }
 });
 
-// Event listener for image input change
+// Event listener for image input change (no auto-submit)
 imageInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -421,6 +868,7 @@ imageInput.addEventListener('change', (event) => {
         reader.onload = function(e) {
             imagePreview.src = e.target.result;
             imagePreviewContainer.style.display = 'flex'; // Show the preview
+            // No auto-submit - let user manually send
         };
         reader.readAsDataURL(file);
     } else {
@@ -428,6 +876,7 @@ imageInput.addEventListener('change', (event) => {
         imagePreviewContainer.style.display = 'none'; // Hide if no file
     }
 });
+
 
 // Event listener for remove image button
 removeImageButton.addEventListener('click', () => {
