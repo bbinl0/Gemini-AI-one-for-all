@@ -22,6 +22,11 @@ import google.genai as genai
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'demo-secret-key-2024')
 
+# Serve static files
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
+
 # Initialize AI clients
 try:
     pollinations_client = PollinationsClient()
@@ -46,6 +51,11 @@ else:
 def home():
     """Home page with simple interface."""
     return render_template('index.html')
+
+@app.route('/chat')
+def chat_interface():
+    """Advanced chat interface."""
+    return render_template('chat.html')
 
 @app.route('/api/health')
 def health():
@@ -139,7 +149,7 @@ def generate_image():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Chat with Gemini AI."""
+    """Enhanced chat with Gemini AI with history support."""
     try:
         data = request.get_json()
         
@@ -150,7 +160,8 @@ def chat():
             }), 503
         
         message = data.get('message', '')
-        model = data.get('model', 'gemini-2.5-flash-lite')
+        model = data.get('model', 'gemini-2.0-flash')
+        history = data.get('history', [])
         
         if not message:
             return jsonify({
@@ -158,27 +169,31 @@ def chat():
                 "error": "Message is required"  
             }), 400
         
-        # Simple direct chat with Gemini
+        # Enhanced chat with Gemini using history
         try:
-            contents = [message]
-            image_data = data.get('image_data')  # Get image data from request
+            # Build conversation history for context
+            contents = []
             
-            # Add image if provided
-            if image_data:
-                from PIL import Image
-                import io
-                import base64
-                
-                if image_data.startswith('data:image'):
-                    image_data = image_data.split(',')[1]
-                
-                image_bytes = base64.b64decode(image_data)
-                pil_image = Image.open(io.BytesIO(image_bytes))
-                contents.append(pil_image)
+            # Add previous conversation history if available
+            for entry in history[-10:]:  # Keep last 10 messages for context
+                if entry.get('role') == 'user':
+                    for part in entry.get('parts', []):
+                        if 'text' in part:
+                            contents.append(f"User: {part['text']}")
+                elif entry.get('role') == 'model':
+                    for part in entry.get('parts', []):
+                        if 'text' in part:
+                            contents.append(f"Assistant: {part['text']}")
+            
+            # Add current message
+            contents.append(f"User: {message}")
+            
+            # Join all contents for context
+            full_conversation = "\n".join(contents[-20:])  # Limit context
             
             response = gemini_client.models.generate_content(
                 model=model,
-                contents=contents
+                contents=[full_conversation]
             )
             
             if response and response.text:
@@ -203,6 +218,103 @@ def chat():
     except Exception as e:
         return jsonify({
             "status": "error", 
+            "error": str(e)
+        }), 500
+
+@app.route('/api/chat-with-image', methods=['POST'])
+def chat_with_image():
+    """Chat with Gemini AI including image support."""
+    try:
+        if not gemini_client:
+            return jsonify({
+                "status": "error",
+                "error": "Gemini service unavailable - GEMINI_API_KEY required"
+            }), 503
+        
+        message = request.form.get('message', '')
+        model = request.form.get('model', 'gemini-2.0-flash')
+        history = request.form.get('history', '[]')
+        
+        try:
+            history = eval(history) if history else []
+        except:
+            history = []
+        
+        image_file = request.files.get('image')
+        
+        if not message and not image_file:
+            return jsonify({
+                "status": "error",
+                "error": "Message or image is required"
+            }), 400
+        
+        # Multimodal chat with Gemini
+        try:
+            contents = []
+            
+            # Add conversation context
+            for entry in history[-5:]:  # Keep last 5 messages for context
+                if entry.get('role') == 'user':
+                    for part in entry.get('parts', []):
+                        if 'text' in part:
+                            contents.append(f"User: {part['text']}")
+                elif entry.get('role') == 'model':
+                    for part in entry.get('parts', []):
+                        if 'text' in part:
+                            contents.append(f"Assistant: {part['text']}")
+            
+            # Add current message and image
+            if message:
+                contents.append(f"User: {message}")
+            
+            # Process image if provided
+            if image_file:
+                from PIL import Image
+                import io
+                
+                # Read and process the image
+                image_bytes = image_file.read()
+                pil_image = Image.open(io.BytesIO(image_bytes))
+                
+                # Convert to appropriate format if needed
+                if pil_image.mode != 'RGB':
+                    pil_image = pil_image.convert('RGB')
+                
+                # Use Gemini with image
+                response = gemini_client.models.generate_content(
+                    model='gemini-2.5-flash',  # Use model that supports images
+                    contents=["\n".join(contents), pil_image]
+                )
+            else:
+                # Text-only conversation
+                response = gemini_client.models.generate_content(
+                    model=model,
+                    contents=["\n".join(contents)]
+                )
+            
+            if response and response.text:
+                result = {
+                    'status': 'success',
+                    'answer': response.text,
+                    'model_used': model
+                }
+            else:
+                result = {
+                    'status': 'error',
+                    'error': 'No response from AI'
+                }
+                
+        except Exception as e:
+            result = {
+                'status': 'error',
+                'error': f'Multimodal chat failed: {str(e)}'
+            }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
             "error": str(e)
         }), 500
 
