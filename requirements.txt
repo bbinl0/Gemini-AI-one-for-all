@@ -1,4 +1,4 @@
-ai-image-platform==1.0.0
+gemini-all-for-one==1.0.0
 flask>=2.3.0
 gunicorn>=21.2.0
 google-genai>=1.33.0
