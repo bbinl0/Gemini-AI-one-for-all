@@ -25,6 +25,7 @@ const GEMINI_MODELS = {
 
 let currentModel = "gemini-2.0-flash"; // Default model
 let chatHistory = []; // To store chat history for context
+let lastGeneratedImage = null; // Store last generated image for editing
 
 // Function to parse code blocks and highlight them
 function parseCodeBlocks(message) {
@@ -46,13 +47,29 @@ function parseCodeBlocks(message) {
 }
 
 // Function to display messages in the chat window
-function displayMessage(message, sender, imageSrc = null) {
+function displayMessage(message, sender, imageSrc = null, isGeneratedImage = false) {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message', `${sender}-message`);
 
     let messageContent = '';
     if (imageSrc) {
-        messageContent += `<img src="${imageSrc}" alt="User uploaded image" class="chat-image-preview" style="border-radius: 8px; margin-bottom: 10px;">`;
+        if (isGeneratedImage) {
+            const imageId = 'generated-img-' + Date.now();
+            messageContent += `
+                <div class="generated-image-container">
+                    <img src="${imageSrc}" alt="Generated image" class="generated-image" id="${imageId}" style="max-width: 400px; border-radius: 8px; margin-bottom: 10px;">
+                    <div class="image-actions">
+                        <button class="download-btn" onclick="downloadImage('${imageSrc}', 'generated-image-${Date.now()}.png')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button class="edit-btn" onclick="prepareImageForEdit('${imageId}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                </div>`;
+        } else {
+            messageContent += `<img src="${imageSrc}" alt="User uploaded image" class="chat-image-preview" style="border-radius: 8px; margin-bottom: 10px;">`;
+        }
     }
     if (message) {
         messageContent += marked.parse(parseCodeBlocks(message));
@@ -113,8 +130,212 @@ function hideTypingIndicator() {
     }
 }
 
+// Function to detect if user wants to generate an image
+function isImageGenerationRequest(prompt) {
+    const imageCommands = [
+        '/img', '/gen', '/generate', '/image',
+        'generate an image', 'generate image', 'create an image', 'create image',
+        'make an image', 'make image', 'draw an image', 'draw image',
+        'i want an image', 'i want image', 'i need an image', 'i need image',
+        'show me an image', 'show me image'
+    ];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    return imageCommands.some(command => lowerPrompt.includes(command));
+}
+
+// Function to detect if user wants to edit an image
+function isImageEditRequest(prompt) {
+    const editCommands = [
+        '/edit', '/modify', '/change',
+        'edit the image', 'edit image', 'modify the image', 'modify image',
+        'change the image', 'change image', 'update the image', 'update image',
+        'improve the image', 'improve image', 'enhance the image', 'enhance image'
+    ];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    return editCommands.some(command => lowerPrompt.includes(command)) && lastGeneratedImage;
+}
+
+// Function to extract edit prompt from edit request
+function extractEditPrompt(fullPrompt) {
+    const lowerPrompt = fullPrompt.toLowerCase();
+    
+    // Remove common edit commands
+    let cleanPrompt = fullPrompt;
+    const commandsToRemove = [
+        '/edit', '/modify', '/change',
+        'edit the image:', 'edit image:', 'modify the image:', 'modify image:',
+        'change the image:', 'change image:', 'update the image:', 'update image:',
+        'edit the image', 'edit image', 'modify the image', 'modify image',
+        'change the image', 'change image', 'update the image', 'update image'
+    ];
+    
+    for (const command of commandsToRemove) {
+        const regex = new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        cleanPrompt = cleanPrompt.replace(regex, '').trim();
+    }
+    
+    return cleanPrompt || fullPrompt;
+}
+
+// Function to extract prompt from image generation request
+function extractImagePrompt(fullPrompt) {
+    const lowerPrompt = fullPrompt.toLowerCase();
+    
+    // Remove common generation commands
+    let cleanPrompt = fullPrompt;
+    const commandsToRemove = [
+        '/img', '/gen', '/generate', '/image',
+        'generate an image of', 'generate image of', 'create an image of', 'create image of',
+        'make an image of', 'make image of', 'draw an image of', 'draw image of',
+        'generate an image', 'generate image', 'create an image', 'create image',
+        'make an image', 'make image', 'draw an image', 'draw image',
+        'i want an image of', 'i want image of', 'i need an image of', 'i need image of',
+        'show me an image of', 'show me image of'
+    ];
+    
+    for (const command of commandsToRemove) {
+        const regex = new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        cleanPrompt = cleanPrompt.replace(regex, '').trim();
+    }
+    
+    return cleanPrompt || fullPrompt;
+}
+
+// Function to edit image using API
+async function editImage(editPrompt) {
+    if (!lastGeneratedImage) {
+        displayMessage('No image available for editing. Please generate an image first.', 'bot');
+        return;
+    }
+    
+    showTypingIndicator();
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/edit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image: lastGeneratedImage.dataUrl,
+                edit_prompt: editPrompt,
+                style: 'photorealistic',
+                aspect_ratio: '1:1'
+            })
+        });
+        
+        const data = await response.json();
+        hideTypingIndicator();
+        
+        if (data.status === 'success' && data.image_base64) {
+            const imageDataUrl = `data:image/png;base64,${data.image_base64}`;
+            
+            // Update the last generated image with the edited version
+            lastGeneratedImage = {
+                dataUrl: imageDataUrl,
+                prompt: `${lastGeneratedImage.prompt} (edited: ${editPrompt})`,
+                timestamp: Date.now()
+            };
+            
+            displayMessage(`Here's your edited image: "${editPrompt}"`, 'bot', imageDataUrl, true);
+            addMessageToHistory(`Edited image: ${editPrompt}`, 'bot');
+        } else {
+            displayMessage(`Sorry, I couldn't edit the image. Error: ${data.error || 'Unknown error'}`, 'bot');
+            addMessageToHistory(`Image editing failed: ${data.error || 'Unknown error'}`, 'bot');
+        }
+    } catch (error) {
+        console.error('Error editing image:', error);
+        hideTypingIndicator();
+        displayMessage('An error occurred while editing the image.', 'bot');
+        addMessageToHistory('Image editing failed due to network error', 'bot');
+    }
+}
+
+// Function to generate image using API
+async function generateImage(prompt) {
+    showTypingIndicator();
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                provider: 'pollinations',
+                aspect_ratio: '1:1'
+            })
+        });
+        
+        const data = await response.json();
+        hideTypingIndicator();
+        
+        if (data.status === 'success' && data.image_base64) {
+            const imageDataUrl = `data:image/png;base64,${data.image_base64}`;
+            lastGeneratedImage = {
+                dataUrl: imageDataUrl,
+                prompt: prompt,
+                timestamp: Date.now()
+            };
+            
+            displayMessage(`Here's your generated image for: "${prompt}"`, 'bot', imageDataUrl, true);
+            addMessageToHistory(`Generated image: ${prompt}`, 'bot');
+        } else {
+            displayMessage(`Sorry, I couldn't generate the image. Error: ${data.error || 'Unknown error'}`, 'bot');
+            addMessageToHistory(`Image generation failed: ${data.error || 'Unknown error'}`, 'bot');
+        }
+    } catch (error) {
+        console.error('Error generating image:', error);
+        hideTypingIndicator();
+        displayMessage('An error occurred while generating the image.', 'bot');
+        addMessageToHistory('Image generation failed due to network error', 'bot');
+    }
+}
+
+// Function to download generated image
+function downloadImage(imageSrc, filename) {
+    const link = document.createElement('a');
+    link.href = imageSrc;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Function to prepare image for editing (when edit button is clicked)
+function prepareImageForEdit(imageId) {
+    const imageElement = document.getElementById(imageId);
+    if (imageElement && lastGeneratedImage) {
+        messageInput.value = `/edit `;
+        messageInput.focus();
+        
+        // Add visual indicator that image is selected for editing
+        document.querySelectorAll('.generated-image').forEach(img => img.classList.remove('selected-for-edit'));
+        imageElement.classList.add('selected-for-edit');
+    }
+}
+
 // Function to send message to API
 async function sendMessage(prompt, imageFile = null) {
+    // Check if this is an image generation request
+    if (!imageFile && isImageGenerationRequest(prompt)) {
+        const imagePrompt = extractImagePrompt(prompt);
+        await generateImage(imagePrompt);
+        clearInputs();
+        return;
+    }
+    
+    // Check if this is an image edit request
+    if (!imageFile && isImageEditRequest(prompt) && lastGeneratedImage) {
+        const editPrompt = extractEditPrompt(prompt);
+        await editImage(editPrompt);
+        clearInputs();
+        return;
+    }
+    
     showTypingIndicator();
     let response;
     try {
