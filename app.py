@@ -8,7 +8,7 @@ Designed for Vercel deployment with serverless functions.
 
 import os
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from ai_image_platform import (
+from gemini_all_for_one import (
     GeminiChatClient, 
     PollinationsClient, 
     ImageAnalyzer,
@@ -112,8 +112,8 @@ def generate_image():
         elif provider == 'gemini' and gemini_client:
             # Use Gemini for image generation
             try:
-                from ai_image_platform.core.image_generation import generate_image_from_text
-                result = generate_image_from_text(
+                generator = ImageGenerator()
+                result = generator.generate_image(
                     prompt_text=prompt,
                     style=style,
                     aspect_ratio=aspect_ratio
@@ -322,8 +322,6 @@ def edit_image():
         
         # Use proper Gemini image editing that preserves the same object
         try:
-            from ai_image_platform.core.image_editing import ImageEditor
-            
             # Initialize the image editor
             image_editor = ImageEditor()
             
