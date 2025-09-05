@@ -112,7 +112,7 @@ def generate_image():
         elif provider == 'gemini' and gemini_client:
             # Use Gemini for image generation
             try:
-                from library_backup.ai_image_platform.core.image_generation import generate_image_from_text
+                from ai_image_platform.core.image_generation import generate_image_from_text
                 result = generate_image_from_text(
                     prompt_text=prompt,
                     style=style,
@@ -322,7 +322,7 @@ def edit_image():
         
         # Use proper Gemini image editing that preserves the same object
         try:
-            from library_backup.ai_image_platform.core.image_editing import ImageEditor
+            from ai_image_platform.core.image_editing import ImageEditor
             
             # Initialize the image editor
             image_editor = ImageEditor()
