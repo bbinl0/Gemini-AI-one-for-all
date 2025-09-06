@@ -208,6 +208,7 @@ def chat():
                     'error': 'No response from AI'
                 }
         except Exception as e:
+            print(f"Chat generation error: {str(e)}")
             result = {
                 'status': 'error',
                 'error': f'Chat failed: {str(e)}'
@@ -216,9 +217,10 @@ def chat():
         return jsonify(result)
         
     except Exception as e:
+        print(f"Chat endpoint error: {str(e)}")
         return jsonify({
             "status": "error", 
-            "error": str(e)
+            "error": f"Chat service error: {str(e)}"
         }), 500
 
 @app.route('/api/chat-with-image', methods=['POST'])
@@ -305,6 +307,7 @@ def chat_with_image():
                 }
                 
         except Exception as e:
+            print(f"Multimodal chat error: {str(e)}")
             result = {
                 'status': 'error',
                 'error': f'Multimodal chat failed: {str(e)}'
@@ -313,9 +316,10 @@ def chat_with_image():
         return jsonify(result)
         
     except Exception as e:
+        print(f"Chat with image endpoint error: {str(e)}")
         return jsonify({
             "status": "error",
-            "error": str(e)
+            "error": f"Multimodal chat service error: {str(e)}"
         }), 500
 
 @app.route('/api/analyze', methods=['POST'])
@@ -458,6 +462,7 @@ def edit_image():
                 }
                 
         except Exception as e:
+            print(f"Image editing error: {str(e)}")
             result = {
                 'status': 'error',
                 'error': f'Image editing failed: {str(e)}'
@@ -466,9 +471,10 @@ def edit_image():
         return jsonify(result)
         
     except Exception as e:
+        print(f"Edit endpoint error: {str(e)}")
         return jsonify({
             "status": "error",
-            "error": str(e)
+            "error": f"Image editing service error: {str(e)}"
         }), 500
 
 if __name__ == '__main__':
