@@ -30,6 +30,10 @@ let chatHistory = []; // To store chat history for context
 let lastGeneratedImage = null; // Store last generated image for editing
 let userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; // Auto-detect user timezone
 
+// Storage management constants
+const MAX_STORAGE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+let storageCheckInterval = null;
+
 // Function to parse code blocks and highlight them
 function parseCodeBlocks(message) {
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -1430,8 +1434,143 @@ document.addEventListener("click", (event) => {
     }
 });
 
+// Storage management functions
+// Function to get current localStorage usage in bytes
+function getStorageSize() {
+    let total = 0;
+    for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+            total += localStorage[key].length + key.length;
+        }
+    }
+    return total;
+}
+
+// Function to clear all localStorage data
+function clearAllStorage() {
+    localStorage.clear();
+    console.log('All localStorage data cleared due to 20MB size limit');
+    
+    // Reset chat interface
+    chatHistory = [];
+    chatWindow.innerHTML = '';
+    lastGeneratedImage = null;
+    
+    // Show notification to user
+    displayMessage('Storage limit reached (20MB). All chat history and cache have been automatically cleared to free up space.', 'bot');
+    
+    // Reset to default model
+    currentModel = "gemini-2.0-flash";
+    selectedModelName.textContent = GEMINI_MODELS[currentModel];
+    
+    // Show welcome message again since this is a fresh start
+    setTimeout(() => {
+        showWelcomeMessage();
+    }, 2000); // Show welcome after storage clear notification
+}
+
+// Function to monitor storage usage
+function checkStorageSize() {
+    const currentSize = getStorageSize();
+    const sizeMB = (currentSize / (1024 * 1024)).toFixed(2);
+    
+    if (currentSize >= MAX_STORAGE_SIZE) {
+        console.warn(`Storage limit exceeded: ${sizeMB}MB. Clearing all data automatically.`);
+        clearAllStorage();
+        return true; // Indicates storage was cleared
+    }
+    return false;
+}
+
+// Function to start automatic storage monitoring
+function startStorageMonitoring() {
+    // Check immediately
+    checkStorageSize();
+    
+    // Check every 10 seconds
+    if (storageCheckInterval) {
+        clearInterval(storageCheckInterval);
+    }
+    
+    storageCheckInterval = setInterval(() => {
+        checkStorageSize();
+    }, 10000); // Check every 10 seconds
+    
+    console.log('Automatic storage monitoring started (20MB limit, checking every 10 seconds)');
+}
+
+// Function to show welcome message with features and commands
+function showWelcomeMessage() {
+    const welcomeMessage = `# Welcome to Advanced AI Chat! ✨
+
+I'm here to help you with **text conversations**, **image generation**, **image analysis**, and **image editing**. Here are all the features and commands available:
+
+## 🎨 **Image Generation Commands**
+- \`/img [description]\` - Generate images
+- \`/gen [description]\` - Generate images  
+- \`/generate [description]\` - Generate images
+- \`"generate an image of [description]"\` - Natural language
+- \`"create an image of [description]"\` - Natural language
+- \`"make an image of [description]"\` - Natural language
+
+## ✏️ **Image Editing Commands**
+- \`/edit [instruction]\` - Edit the last generated image
+- \`"edit the image [instruction]"\` - Natural language
+- Click the **Edit** button on any generated image
+- Upload an image and use edit commands
+
+## 💬 **Chat Features**
+- **Multi-Model Support**: Switch between Gemini models using the dropdown
+- **Image Upload**: Click the upload button to analyze images
+- **Chat History**: Your conversations are automatically saved
+- **Code Highlighting**: Code blocks are automatically formatted
+- **Time Queries**: Ask for time in different countries
+- **Date Calculations**: Calculate future/past dates
+
+## 🌍 **Special Commands**
+- Ask about time: \`"What time is it in London?"\`
+- Date calculations: \`"What day will it be 30 days from now?"\`
+- Image analysis: Upload any image and ask questions about it
+- Multi-language support: Works in English and Bengali
+
+## 🎯 **Pro Tips**
+- **Chain Operations**: Generate an image, then edit it multiple times
+- **Detailed Prompts**: More specific descriptions = better results
+- **Model Selection**: Try different Gemini models for various tasks
+- **Upload + Edit**: Upload your own images and edit them with AI
+
+Ready to start creating? Try any command or just tell me what you'd like to do! 🚀`;
+
+    displayMessage(welcomeMessage, "bot");
+    addMessageToHistory("Welcome message with features and commands", "bot");
+}
+
+// Function to auto-clear and show welcome on every visit
+function autoFreshStart() {
+    // Always clear all localStorage data on every visit
+    localStorage.clear();
+    console.log('Auto-clearing all cache and history for fresh start');
+    
+    // Reset chat interface
+    chatHistory = [];
+    chatWindow.innerHTML = '';
+    lastGeneratedImage = null;
+    
+    // Reset to default model
+    currentModel = "gemini-2.0-flash";
+    selectedModelName.textContent = GEMINI_MODELS[currentModel];
+    
+    // Always show welcome message for fresh start
+    showWelcomeMessage();
+}
+
 // Chat history functionality
 function saveChatHistory() {
+    // Check storage size before saving
+    if (checkStorageSize()) {
+        return; // Storage was cleared, don't try to save
+    }
+    
     try {
         // Limit chat history HTML to prevent quota exceeded
         const htmlContent = chatWindow.innerHTML;
@@ -1455,19 +1594,14 @@ function saveChatHistory() {
         const limitedHistory = chatHistory.slice(-20); // Keep only last 20 messages
         localStorage.setItem("chat-history-data", JSON.stringify(limitedHistory));
         localStorage.setItem("selected-model", currentModel);
+        
+        // Check size after saving
+        checkStorageSize();
+        
     } catch (error) {
         if (error.name === 'QuotaExceededError') {
-            console.warn('LocalStorage quota exceeded, clearing old data');
-            // Clear old data and try again with minimal content
-            localStorage.removeItem("chat-history-html");
-            localStorage.removeItem("chat-history-data");
-            try {
-                const limitedHistory = chatHistory.slice(-5); // Keep only last 5 messages
-                localStorage.setItem("chat-history-data", JSON.stringify(limitedHistory));
-                localStorage.setItem("selected-model", currentModel);
-            } catch (e) {
-                console.error('Unable to save even minimal chat history:', e);
-            }
+            console.warn('LocalStorage quota exceeded during save, clearing all data');
+            clearAllStorage();
         } else {
             console.error('Error saving chat history:', error);
         }
@@ -1539,6 +1673,19 @@ window.addEventListener("error", function (event) {
     event.preventDefault();
 });
 
-// Initialize
+// Initialize with storage monitoring
 loadThemePreference();
-loadChatHistory();
+startStorageMonitoring();
+
+// Display current storage usage
+const currentSize = getStorageSize();
+const sizeMB = (currentSize / (1024 * 1024)).toFixed(2);
+console.log(`Initial storage usage: ${sizeMB}MB / 20MB`);
+
+// Don't load chat history since we auto-clear everything
+// loadChatHistory(); // Commented out since we always start fresh
+
+// Always auto-clear and show welcome on every visit
+setTimeout(() => {
+    autoFreshStart();
+}, 500); // Small delay to ensure page is ready
