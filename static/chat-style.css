@@ -316,18 +316,25 @@ pre {
     background-color: #ffffff;
     border-top: 1px solid #e0e0e0;
     border-radius: 0 0 8px 8px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    min-height: 60px;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 #message-input {
-    flex-grow: 1;
+    flex: 1;
     border: 1px solid #cccccc;
     padding: 12px 18px;
     border-radius: 25px;
     background-color: #f9f9f9;
     color: #333;
     font-size: 1em;
-    margin-left: 10px;
-    margin-right: 10px;
+    margin: 0 8px;
+    min-width: 0;
+    max-width: calc(100% - 160px);
 }
 
 .clear-input-button {
@@ -551,6 +558,49 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     background-color: #4a90e2;
 }
 
+/* Universal Responsive Footer for All Screen Sizes */
+.chat-footer button, .chat-footer #message-input {
+    flex-shrink: 0;
+}
+
+.icon-button {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#send-button {
+    min-width: 50px;
+    min-height: 50px;
+    padding: 12px;
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+#image-upload-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    flex-shrink: 0;
+}
+
+#clear-input-button {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+    flex-shrink: 0;
+}
+
 /* ===== RESPONSIVE DESIGN IMPROVEMENTS ===== */
 
 /* Mobile First - Small screens (up to 480px) */
@@ -606,7 +656,7 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         gap: 8px;
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 80px; /* Space for fixed footer */
+        padding-bottom: 100px; /* Space for fixed footer */
         -webkit-overflow-scrolling: touch;
     }
     
@@ -626,8 +676,8 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     .chat-footer {
-        padding: 12px;
-        gap: 8px;
+        padding: 8px 12px;
+        gap: 6px;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -637,13 +687,20 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         z-index: 100;
         min-height: 60px;
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
     }
     
     #message-input {
         font-size: 16px; /* Prevents zoom on iOS */
-        padding: 14px 16px;
+        padding: 12px 14px;
         min-height: 20px;
         border-radius: 25px;
+        flex: 1;
+        margin: 0 6px;
+        max-width: calc(100vw - 180px); /* Leave space for buttons */
     }
     
     .icon-button {
@@ -660,12 +717,44 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         min-width: 50px;
         min-height: 50px;
         padding: 12px;
+        flex-shrink: 0;
     }
     
     #image-upload-button {
         min-width: 44px;
         min-height: 44px;
         padding: 10px;
+        flex-shrink: 0;
+    }
+    
+    /* Ensure clear button is visible */
+    #clear-input-button {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px;
+        flex-shrink: 0;
+        order: 1;
+    }
+    
+    /* Input should be in the middle */
+    #message-input {
+        order: 2;
+    }
+    
+    /* Image preview container */
+    #image-preview-container {
+        order: 3;
+        flex-shrink: 0;
+    }
+    
+    /* Upload button */
+    #image-upload-button {
+        order: 4;
+    }
+    
+    /* Send button last */
+    #send-button {
+        order: 5;
     }
     
     .image-actions {
@@ -750,11 +839,14 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     .chat-footer {
         padding: 12px 20px;
+        gap: 10px;
     }
     
     #message-input {
         font-size: 15px;
         padding: 12px 16px;
+        margin: 0 8px;
+        max-width: calc(100% - 180px);
     }
     
     .icon-button {
@@ -777,6 +869,16 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     .generated-image {
         max-width: 400px;
+    }
+    
+    .chat-footer {
+        padding: 15px 25px;
+        gap: 12px;
+    }
+    
+    #message-input {
+        margin: 0 10px;
+        max-width: calc(100% - 200px);
     }
 }
 
@@ -802,6 +904,12 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     .chat-footer {
         padding: 15px 25px;
+        gap: 15px;
+    }
+    
+    #message-input {
+        margin: 0 12px;
+        max-width: calc(100% - 220px);
     }
 }
 
