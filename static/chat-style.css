@@ -85,7 +85,11 @@ body {
 
 /* Chat Header */
 .chat-header {
-    background-color: #4a90e2; /* Primary blue */
+    /* আগের background-color বাদ দিয়ে গ্রেডিয়েন্ট যোগ করা হয়েছে */
+    background: linear-gradient(45deg, #4285F4, #DB4437, #F4B400, #0F9D58, #4285F4, #DB4437);
+    background-size: 400% 400%;
+    animation: moveAngledGradient 20s linear infinite;
+    
     color: white;
     padding: 8px 15px; /* Responsive padding */
     border-bottom: 1px solid #e0e0e0;
@@ -98,6 +102,7 @@ body {
     flex-shrink: 0;
 }
 
+/* অন্যান্য কোড অপরিবর্তিত থাকবে */
 .header-left, .header-right {
     display: flex;
     align-items: center;
@@ -210,6 +215,16 @@ body {
 .model-dropdown-item.selected {
     background-color: #e0e0e0;
     font-weight: 500;
+}
+
+/* অ্যাঙ্গেলড গ্রেডিয়েন্ট অ্যানিমেশন - এটি নতুন যোগ করা হয়েছে */
+@keyframes moveAngledGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
 }
 
 /* Chat Window and Messages */
