@@ -40,25 +40,27 @@
 </main>
 
 <footer class="chat-footer">
-<button id="clear-input-button" class="icon-button clear-input-button">
-<i class="fas fa-times-circle"></i>
-</button>
-<input type="text" id="message-input" placeholder="Type your message...">
-<input type="file" id="image-input" accept="image/*" style="display: none;">
-<div id="image-preview-container" style="display: none;">
-    <img id="image-preview" src="#" alt="Image Preview" style="max-width: 50px; max-height: 50px; border-radius: 5px; margin-right: 10px;">
-    <button id="remove-image-button" class="icon-button clear-input-button" style="font-size: 1em; width: 30px; height: 30px; margin-right: 5px;">
-        <i class="fas fa-times"></i>
+    <button id="clear-input-button" class="icon-button clear-input-button" title="Clear Input">
+        <i class="fas fa-times-circle"></i>
     </button>
-</div>
-<button id="image-upload-button" class="icon-button">
-<i class="fas fa-upload"></i>
-</button>
-<button id="send-button">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
-<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-</svg>
-</button>
+    <div class="input-area-wrapper">
+        <textarea id="message-input" placeholder="Type your message..." rows="1"></textarea>
+        <button id="send-button" title="Send Message">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
+    <input type="file" id="image-input" accept="image/*" style="display: none;">
+    <div id="image-preview-container" style="display: none;">
+        <img id="image-preview" src="#" alt="Image Preview">
+        <button id="remove-image-button" class="icon-button clear-input-button" title="Remove Image">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <button id="image-upload-button" class="icon-button" title="Upload Image">
+        <i class="fas fa-image"></i>
+    </button>
 </footer>
 </div>
 
