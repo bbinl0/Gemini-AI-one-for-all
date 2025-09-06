@@ -1560,6 +1560,9 @@ function autoFreshStart() {
     currentModel = "gemini-2.0-flash";
     selectedModelName.textContent = GEMINI_MODELS[currentModel];
     
+    // Repopulate model dropdown to ensure it works
+    populateModelDropdown();
+    
     // Always show welcome message for fresh start
     showWelcomeMessage();
 }
