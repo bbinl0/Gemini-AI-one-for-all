@@ -569,7 +569,6 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     padding: 8px;
     border: none;
     border-radius: 50%;
-    color: #ffffff;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
