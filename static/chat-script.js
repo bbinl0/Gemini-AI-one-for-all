@@ -848,8 +848,10 @@ async function editImage(editPrompt) {
     } catch (error) {
         console.error("Error editing image:", error);
         hideTypingIndicator();
-        displayMessage("An error occurred while editing the image.", "bot");
+        displayMessage("An error occurred while editing the image. Please try again.", "bot");
         addMessageToHistory("Image editing failed due to network error", "bot");
+        // Don't block the system - continue processing
+        return;
     }
 }
 
@@ -1017,9 +1019,24 @@ async function editUploadedImage(editPrompt, imageFile) {
         formData.append("style", "photorealistic");
         formData.append("aspect_ratio", "1:1");
 
-        const response = await fetch(`${BASE_URL}/api/edit-uploaded`, {
+        // Convert file to base64
+        const base64Image = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(imageFile);
+        });
+        
+        const response = await fetch(`${BASE_URL}/api/edit`, {
             method: "POST",
-            body: formData,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image: base64Image,
+                edit_prompt: editPrompt,
+                style: "photorealistic",
+                aspect_ratio: "1:1"
+            })
         });
 
         const data = await response.json();
@@ -1078,9 +1095,17 @@ async function editUploadedImageFromChat(editPrompt, imageDataUrl) {
         formData.append("style", "photorealistic");
         formData.append("aspect_ratio", "1:1");
 
-        const apiResponse = await fetch(`${BASE_URL}/api/edit-uploaded`, {
+        const apiResponse = await fetch(`${BASE_URL}/api/edit`, {
             method: "POST",
-            body: formData,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image: imageDataUrl,
+                edit_prompt: editPrompt,
+                style: "photorealistic",
+                aspect_ratio: "1:1"
+            })
         });
 
         if (!apiResponse.ok) {
@@ -1217,23 +1242,33 @@ async function sendMessage(prompt, imageFile = null) {
         hideTypingIndicator();
 
         if (data.status === "error") {
-            displayMessage(data.error, "bot");
-            addMessageToHistory(data.error, "bot"); // Add to history
+            const errorMsg = data.error || "An unexpected error occurred";
+            displayMessage(`Sorry, I encountered an issue: ${errorMsg}`, "bot");
+            addMessageToHistory(`Error: ${errorMsg}`, "bot");
         } else {
-            displayMessage(data.answer || data.response, "bot");
-            addMessageToHistory(data.answer || data.response, "bot"); // Add to history
+            const responseText = data.answer || data.response || "I received your message but couldn't generate a proper response.";
+            displayMessage(responseText, "bot");
+            addMessageToHistory(responseText, "bot");
         }
     } catch (error) {
         console.error("Error during message generation:", error);
         hideTypingIndicator();
-        displayMessage(
-            "An error occurred while processing your request.",
-            "bot",
-        );
-        addMessageToHistory(
-            "An error occurred while processing your request.",
-            "bot",
-        ); // Add to history
+        
+        // Provide more helpful error messages
+        let errorMessage = "I'm having trouble processing your request. ";
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage += "Please check your internet connection and try again.";
+        } else if (error.message.includes('timeout')) {
+            errorMessage += "The request timed out. Please try again.";
+        } else {
+            errorMessage += "Please try again in a moment.";
+        }
+        
+        displayMessage(errorMessage, "bot");
+        addMessageToHistory(`Network error: ${error.message}`, "bot");
+        
+        // Don't block the interface - continue processing
+        return;
     }
     clearInputs();
 }
@@ -1397,9 +1432,46 @@ document.addEventListener("click", (event) => {
 
 // Chat history functionality
 function saveChatHistory() {
-    localStorage.setItem("chat-history-html", chatWindow.innerHTML); // Save HTML for display
-    localStorage.setItem("chat-history-data", JSON.stringify(chatHistory)); // Save data for API
-    localStorage.setItem("selected-model", currentModel);
+    try {
+        // Limit chat history HTML to prevent quota exceeded
+        const htmlContent = chatWindow.innerHTML;
+        if (htmlContent.length > 50000) {
+            // If too large, only save last part
+            const messages = chatWindow.querySelectorAll('.message');
+            if (messages.length > 10) {
+                // Keep only last 10 messages
+                const recentMessages = Array.from(messages).slice(-10);
+                const tempDiv = document.createElement('div');
+                recentMessages.forEach(msg => tempDiv.appendChild(msg.cloneNode(true)));
+                localStorage.setItem("chat-history-html", tempDiv.innerHTML);
+            } else {
+                localStorage.setItem("chat-history-html", htmlContent);
+            }
+        } else {
+            localStorage.setItem("chat-history-html", htmlContent);
+        }
+        
+        // Limit chat history data
+        const limitedHistory = chatHistory.slice(-20); // Keep only last 20 messages
+        localStorage.setItem("chat-history-data", JSON.stringify(limitedHistory));
+        localStorage.setItem("selected-model", currentModel);
+    } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+            console.warn('LocalStorage quota exceeded, clearing old data');
+            // Clear old data and try again with minimal content
+            localStorage.removeItem("chat-history-html");
+            localStorage.removeItem("chat-history-data");
+            try {
+                const limitedHistory = chatHistory.slice(-5); // Keep only last 5 messages
+                localStorage.setItem("chat-history-data", JSON.stringify(limitedHistory));
+                localStorage.setItem("selected-model", currentModel);
+            } catch (e) {
+                console.error('Unable to save even minimal chat history:', e);
+            }
+        } else {
+            console.error('Error saving chat history:', error);
+        }
+    }
 }
 
 function loadChatHistory() {
@@ -1447,6 +1519,18 @@ function loadChatHistory() {
 window.addEventListener("unhandledrejection", function (event) {
     console.warn("Handled unhandled promise rejection:", event.reason);
     event.preventDefault(); // Prevent the default behavior (showing error in console)
+    
+    // If it's an API error, show a user-friendly message
+    if (event.reason && event.reason.message && event.reason.message.includes('fetch')) {
+        displayMessage("Connection issue detected. Please try your request again.", "bot");
+    }
+});
+
+// Global error handler for window errors
+window.addEventListener("error", function (event) {
+    console.warn("Handled global error:", event.error);
+    // Don't show error messages for script loading errors or minor issues
+    event.preventDefault();
 });
 
 // Global error handler for general errors
