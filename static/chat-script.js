@@ -1,6 +1,40 @@
 const chatWindow = document.getElementById("chat-window");
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
+
+// Function to adjust textarea height
+function adjustTextareaHeight() {
+    messageInput.style.height = 'auto'; // Reset height to auto
+    const currentScrollHeight = messageInput.scrollHeight;
+    const lineHeight = parseFloat(getComputedStyle(messageInput).lineHeight);
+    const maxHeight = parseFloat(getComputedStyle(messageInput).maxHeight);
+
+    // Calculate desired height, ensuring it doesn't exceed maxHeight
+    let newHeight = Math.min(currentScrollHeight, maxHeight);
+
+    // Ensure minimum height for one line
+    if (newHeight < lineHeight * 1.5) { // 1.5 to account for padding/line-height variations
+        newHeight = lineHeight * 1.5;
+    }
+
+    messageInput.style.height = newHeight + 'px';
+
+    // Show scrollbar if content exceeds max height
+    if (messageInput.scrollHeight > newHeight) {
+        messageInput.style.overflowY = 'auto';
+    } else {
+        messageInput.style.overflowY = 'hidden';
+    }
+}
+
+// Function to toggle send button visibility
+function toggleSendButton() {
+    if (messageInput.value.trim() !== "" || imageInput.files[0]) {
+        sendButton.classList.add("show");
+    } else {
+        sendButton.classList.remove("show");
+    }
+}
 const clearInputButton = document.getElementById("clear-input-button");
 const themeToggle = document.getElementById("theme-toggle");
 const modelDisplay = document.getElementById("model-display");
@@ -1317,9 +1351,22 @@ imageUploadButton.addEventListener("click", () => {
 
 // Event listener for message input (Enter key)
 messageInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) { // Allow Shift+Enter for new line
+        e.preventDefault(); // Prevent default behavior (new line)
         sendButton.click();
     }
+});
+
+// Event listener for message input (input and keyup for resizing and button visibility)
+messageInput.addEventListener("input", () => {
+    adjustTextareaHeight();
+    toggleSendButton();
+});
+
+// Initial adjustment on page load
+document.addEventListener('DOMContentLoaded', () => {
+    adjustTextareaHeight();
+    toggleSendButton();
 });
 
 // Event listener for image input change (no auto-submit)
@@ -1330,12 +1377,15 @@ imageInput.addEventListener("change", (event) => {
         reader.onload = function (e) {
             imagePreview.src = e.target.result;
             imagePreviewContainer.style.display = "flex"; // Show the preview
-            // No auto-submit - let user manually send
+            adjustTextareaHeight(); // Adjust textarea height when image is added
+            toggleSendButton(); // Check send button visibility
         };
         reader.readAsDataURL(file);
     } else {
         imagePreview.src = "#";
         imagePreviewContainer.style.display = "none"; // Hide if no file
+        adjustTextareaHeight(); // Adjust textarea height when image is removed
+        toggleSendButton(); // Check send button visibility
     }
 });
 
@@ -1344,6 +1394,7 @@ removeImageButton.addEventListener("click", () => {
     imageInput.value = ""; // Clear the selected file
     imagePreview.src = "#";
     imagePreviewContainer.style.display = "none"; // Hide the preview
+    toggleSendButton(); // Check send button visibility
 });
 
 // Event listener for clear input button
@@ -1357,6 +1408,8 @@ function clearInputs() {
     imageInput.value = "";
     imagePreview.src = "#";
     imagePreviewContainer.style.display = "none";
+    adjustTextareaHeight(); // Reset textarea height
+    toggleSendButton(); // Hide send button
 }
 
 // Theme toggle functionality
@@ -1692,3 +1745,7 @@ console.log(`Initial storage usage: ${sizeMB}MB / 20MB`);
 setTimeout(() => {
     autoFreshStart();
 }, 500); // Small delay to ensure page is ready
+
+// Initial adjustments
+adjustTextareaHeight();
+toggleSendButton();
