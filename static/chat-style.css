@@ -326,40 +326,76 @@ pre {
 /* Chat Footer */
 .chat-footer {
     display: flex;
-    align-items: center;
-    padding: 10px 15px;
+    align-items: flex-end;
+    padding: 8px;
     background-color: #ffffff;
     border-top: 1px solid #e0e0e0;
     border-radius: 0 0 8px 8px;
-    gap: 8px;
+    gap: 5px; /* Reduced gap */
     flex-wrap: nowrap;
     justify-content: space-between;
     min-height: 60px;
     box-sizing: border-box;
     width: 100%;
+    position: relative;
+}
+
+.input-area-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    background-color: #f9f9f9;
+    border: 1px solid #cccccc;
+    border-radius: 22px; /* Increased border-radius */
+    padding-right: 45px; /* Increased space for send button */
+    min-height: 40px; /* Increased minimum height for the wrapper */
 }
 
 #message-input {
     flex: 1;
-    border: 1px solid #cccccc;
-    padding: 12px 18px;
-    border-radius: 25px;
-    background-color: #f9f9f9;
+    border: none;
+    padding: 10px 15px; /* Increased padding */
+    border-radius: 22px; /* Match wrapper border-radius */
+    background-color: transparent;
     color: #333;
-    font-size: 1em;
-    margin: 0 8px;
+    font-size: 0.95em; /* Increased font size */
     min-width: 0;
-    max-width: calc(100% - 160px);
+    resize: none;
+    overflow-y: hidden;
+    max-height: 120px; /* Increased max height for input box (e.g., ~5-6 lines) */
+    line-height: 1.4; /* Increased line height */
+}
+
+.icon-button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 6px; /* Smaller padding */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.icon-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.icon-button i {
+    font-size: 18px; /* Smaller icon size */
 }
 
 .clear-input-button {
     color: #e74c3c;
-    font-size: 1.2em;
+    font-size: 1em; /* Adjusted icon size */
     padding: 0;
     background: none;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 36px; /* Adjusted button size */
+    height: 36px; /* Adjusted button size */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -370,40 +406,50 @@ pre {
 }
 
 #image-upload-button {
-    width: 50px;
-    height: 50px;
+    width: 36px; /* Adjusted button size */
+    height: 36px; /* Adjusted button size */
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    margin-right: 10px;
-    background-color: #2ecc71; /* Green for upload */
+    background-color: #2ecc71;
     color: white;
     border: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Slightly larger shadow */
 }
 
 #image-upload-button i {
-    font-size: 24px;
+    font-size: 18px; /* Adjusted icon size */
 }
 
 #send-button {
-    background-color: #4a90e2; /* Primary blue */
+    background-color: #4a90e2;
     border: none;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 36px; /* Adjusted button size */
+    height: 36px; /* Adjusted button size */
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Slightly larger shadow */
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.2s ease;
+}
+
+#send-button.show {
+    visibility: visible;
+    opacity: 1;
 }
 
 .send-icon {
-    width: 26px;
-    height: 26px;
+    width: 18px; /* Adjusted icon size */
+    height: 18px; /* Adjusted icon size */
     fill: #ffffff;
 }
 
@@ -411,13 +457,26 @@ pre {
 #image-preview-container {
     display: flex;
     align-items: center;
-    margin-right: 10px;
+    margin-left: 8px; /* Adjusted margin */
+    margin-right: 8px; /* Adjusted margin */
+    padding: 4px; /* Added padding */
+    border: 1px solid #ddd; /* Added border */
+    border-radius: 8px; /* Added border-radius */
+    background-color: #f0f0f0; /* Added background color */
+    transition: all 0.2s ease;
+}
+
+/* Selected image preview style */
+#image-preview-container.selected-image-preview {
+    border: 2px solid #4a90e2;
+    box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
+    transform: scale(1.05);
 }
 
 #image-preview {
-    max-width: 50px;
-    max-height: 50px;
-    border-radius: 5px;
+    max-width: 40px; /* Smaller preview image */
+    max-height: 40px; /* Smaller preview image */
+    border-radius: 4px;
     margin-right: 5px;
 }
 
@@ -559,9 +618,13 @@ body.dark-mode #send-button {
     background-color: #4a90e2;
 }
 
-.chat-image-preview.selected-for-edit {
+.chat-image-preview.selected-for-edit,
+.chat-image-preview.selected-image-preview,
+.generated-image.selected-image-preview {
     border: 2px solid #61afef;
     box-shadow: 0 0 10px rgba(97, 175, 239, 0.3);
+    transition: all 0.2s ease;
+    transform: scale(1.02);
 }
 
 /* Dark mode styles for uploaded image container */
@@ -578,41 +641,22 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     flex-shrink: 0;
 }
 
-.icon-button {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 8px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Adjusted min-width/height for all buttons in the footer */
+/* Universal Responsive Footer for All Screen Sizes */
+.chat-footer .icon-button,
+.chat-footer #send-button,
+.chat-footer #image-upload-button,
+.chat-footer #clear-input-button {
+    min-width: 36px; /* Increased button size */
+    min-height: 36px; /* Increased button size */
+    padding: 0;
 }
 
-#send-button {
-    min-width: 50px;
-    min-height: 50px;
-    padding: 12px;
-    background-color: #4a90e2;
-    color: white;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-#image-upload-button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
-    flex-shrink: 0;
-}
-
-#clear-input-button {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 8px;
-    flex-shrink: 0;
+.chat-footer .icon-button i,
+.chat-footer #send-button .send-icon,
+.chat-footer #image-upload-button i,
+.chat-footer #clear-input-button i {
+    font-size: 18px; /* Increased icon size */
 }
 
 /* ===== RESPONSIVE DESIGN IMPROVEMENTS ===== */
@@ -646,6 +690,44 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         top: 0;
         z-index: 100;
     }
+
+    /* Fix for image preview container on mobile */
+    #image-preview-container {
+        display: flex;
+        align-items: center;
+        margin-left: 2px;
+        margin-right: 2px;
+        padding: 3px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f0f0f0;
+        max-width: 40px;
+        max-height: 40px;
+        position: relative;
+    }
+
+    #image-preview {
+        max-width: 35px;
+        max-height: 35px;
+        border-radius: 4px;
+    }
+
+    #remove-image-button {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #e74c3c;
+        color: white;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        cursor: pointer;
+        z-index: 10;
+    }
     
     .app-title {
         font-size: 1.2em;
@@ -670,7 +752,7 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         gap: 8px;
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 100px; /* Space for fixed footer */
+        padding-bottom: 80px; /* Adjusted space for fixed footer */
         -webkit-overflow-scrolling: touch;
     }
     
@@ -690,37 +772,29 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     .chat-footer {
-        padding: 8px 12px;
-        gap: 6px;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: #ffffff;
-        border-top: 1px solid #e0e0e0;
-        z-index: 100;
+        padding: 8px;
+        gap: 5px; /* Reduced gap */
         min-height: 60px;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: nowrap;
     }
     
+    .input-area-wrapper {
+        padding-right: 40px;
+        min-height: 40px;
+    }
+
     #message-input {
-        font-size: 16px; /* Prevents zoom on iOS */
-        padding: 12px 14px;
-        min-height: 20px;
-        border-radius: 25px;
+        font-size: 0.95em;
+        padding: 10px 12px;
+        min-height: 25px;
+        border-radius: 22px;
         flex: 1;
-        margin: 0 6px;
-        max-width: calc(100vw - 180px); /* Leave space for buttons */
+        max-width: calc(100vw - 140px);
     }
     
     .icon-button {
-        padding: 10px;
-        min-width: 44px;
-        min-height: 44px;
+        padding: 6px;
+        min-width: 36px;
+        min-height: 36px;
     }
     
     .icon-button i {
@@ -728,39 +802,47 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     #send-button {
-        min-width: 50px;
-        min-height: 50px;
-        padding: 12px;
-        flex-shrink: 0;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0;
+        right: 4px;
+        bottom: 4px;
     }
     
     #image-upload-button {
-        min-width: 44px;
-        min-height: 44px;
-        padding: 10px;
-        flex-shrink: 0;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0;
     }
     
     /* Ensure clear button is visible */
     #clear-input-button {
-        min-width: 40px;
-        min-height: 40px;
-        padding: 8px;
-        flex-shrink: 0;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0;
         order: 1;
     }
     
     /* Input should be in the middle */
-    #message-input {
+    .input-area-wrapper {
         order: 2;
+        margin: 0 2px; /* Reduced margin */
     }
     
     /* Image preview container */
     #image-preview-container {
         order: 3;
         flex-shrink: 0;
+        margin-left: 2px; /* Reduced margin */
+        margin-right: 2px; /* Reduced margin */
+        padding: 3px;
     }
     
+    #image-preview {
+        max-width: 35px;
+        max-height: 35px;
+    }
+
     /* Upload button */
     #image-upload-button {
         order: 4;
@@ -815,7 +897,7 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     body.keyboard-visible .chat-window {
-        max-height: calc(100vh - 140px); /* Adjust for header + footer */
+        max-height: calc(100vh - 130px); /* Adjusted for header + footer */
     }
     
     /* Dark mode mobile footer */
@@ -852,22 +934,10 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     .chat-footer {
-        padding: 12px 20px;
-        gap: 10px;
+        padding: 8px;
+        gap: 5px; /* Reduced gap */
+        min-height: 60px;
     }
-    
-    #message-input {
-        font-size: 15px;
-        padding: 12px 16px;
-        margin: 0 8px;
-        max-width: calc(100% - 180px);
-    }
-    
-    .icon-button {
-        min-width: 40px;
-        min-height: 40px;
-    }
-}
 
 /* Large screens - Desktop (769px to 1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
@@ -886,14 +956,22 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     .chat-footer {
-        padding: 15px 25px;
-        gap: 12px;
+        padding: 10px 15px;
+        gap: 8px; /* Reduced gap */
     }
     
-    #message-input {
-        margin: 0 10px;
-        max-width: calc(100% - 200px);
+    .input-area-wrapper {
+        padding-right: 45px;
+        min-height: 40px;
     }
+
+    #message-input {
+        margin: 0;
+        max-width: calc(100% - 45px);
+        padding: 10px 15px;
+    }
+}
+
 }
 
 /* Extra large screens - Wide Desktop (1025px+) */
@@ -917,13 +995,27 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     }
     
     .chat-footer {
-        padding: 15px 25px;
-        gap: 15px;
+        padding: 12px 20px;
+        gap: 10px; /* Reduced gap */
+        align-items: center; /* Ensure vertical centering */
     }
     
+    .input-area-wrapper {
+        padding-right: 45px; /* Reduced for better spacing */
+        min-height: 36px; /* Reduced height */
+        border: 1px solid #cccccc; /* Consistent border */
+    }
+
     #message-input {
-        margin: 0 12px;
-        max-width: calc(100% - 220px);
+        margin: 0;
+        max-width: calc(100% - 45px);
+        padding: 8px 15px; /* Reduced padding */
+        font-size: 1.1em; /* Increased font size */
+        line-height: 1.4; /* Adjusted line height */
+    }
+
+    #send-button {
+        bottom: 3px; /* Adjusted positioning */
     }
 }
 
@@ -978,18 +1070,19 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
 
 /* Touch device improvements */
 @media (pointer: coarse) {
+    /* Further reduced sizes for touch devices */
     .icon-button, .download-btn, .edit-btn, #send-button, #image-upload-button {
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 38px; /* Adjusted for touch */
+        min-height: 38px; /* Adjusted for touch */
     }
     
     .model-display {
-        padding: 8px 12px;
+        padding: 6px 10px; /* Adjusted for touch */
     }
     
     .model-dropdown-item {
-        padding: 12px 15px;
-        font-size: 16px;
+        padding: 10px 12px; /* Adjusted for touch */
+        font-size: 15px; /* Adjusted for touch */
     }
 }
 
