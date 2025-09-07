@@ -1,3 +1,131 @@
+/* Settings Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    position: relative;
+    animation: slideIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+@keyframes slideIn {
+    from {transform: translateY(-50px); opacity: 0;}
+    to {transform: translateY(0); opacity: 1;}
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    cursor: pointer;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: #4285F4;
+    text-decoration: none;
+}
+
+.api-key-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 16px;
+    margin: 15px 0;
+    font-family: monospace;
+    box-sizing: border-box;
+}
+
+.api-key-input:focus {
+    outline: none;
+    border-color: #4285F4;
+}
+
+.api-status {
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-weight: 500;
+}
+
+.api-status.connected {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.api-status.disconnected {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.btn {
+    background: #4285F4;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background: #357ae8;
+}
+
+.clear-btn {
+    background: #dc3545;
+}
+
+.clear-btn:hover {
+    background: #c82333;
+}
+
+/* Sparkle emoji as settings button */
+.sparkle-emoji {
+    cursor: pointer;
+    display: inline-block;
+    transition: all 0.3s ease;
+    padding: 4px;
+    border-radius: 50%;
+    user-select: none;
+}
+
+.sparkle-emoji:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(180deg) scale(1.2);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
 /* Generated Image Styles */
 .generated-image-container {
     max-width: 100%;
@@ -331,7 +459,7 @@ pre {
     background-color: #ffffff;
     border-top: 1px solid #e0e0e0;
     border-radius: 0 0 8px 8px;
-    gap: 5px; /* Reduced gap */
+    gap: 0px; /* Reduced gap */
     flex-wrap: nowrap;
     justify-content: space-between;
     min-height: 60px;
@@ -417,6 +545,7 @@ pre {
     color: white;
     border: none;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Slightly larger shadow */
+    position: relative; /* Ensure positioning context for absolute children */
 }
 
 #image-upload-button i {
@@ -464,6 +593,7 @@ pre {
     border-radius: 8px; /* Added border-radius */
     background-color: #f0f0f0; /* Added background color */
     transition: all 0.2s ease;
+    position: relative; /* For positioning the remove button */
 }
 
 /* Selected image preview style */
@@ -478,6 +608,28 @@ pre {
     max-height: 40px; /* Smaller preview image */
     border-radius: 4px;
     margin-right: 5px;
+}
+
+#image-preview-container #remove-image-button {
+    position: absolute;
+    top: -8px; /* Adjust position as needed */
+    right: -8px; /* Adjust position as needed */
+    background: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    width: 20px; /* Larger for easier tapping */
+    height: 20px; /* Larger for easier tapping */
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: none; /* Hidden by default */
+}
+
+#image-preview-container.has-image #remove-image-button {
+    display: flex; /* Show when image is selected */
 }
 
 .chat-image-preview {
@@ -691,42 +843,14 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
         z-index: 100;
     }
 
-    /* Fix for image preview container on mobile */
+    /* Hide desktop image preview container on mobile */
     #image-preview-container {
-        display: flex;
-        align-items: center;
-        margin-left: 2px;
-        margin-right: 2px;
-        padding: 3px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f0f0f0;
-        max-width: 40px;
-        max-height: 40px;
-        position: relative;
+        display: none !important;
     }
 
-    #image-preview {
-        max-width: 35px;
-        max-height: 35px;
-        border-radius: 4px;
-    }
-
-    #remove-image-button {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #e74c3c;
-        color: white;
-        border-radius: 50%;
-        width: 16px;
-        height: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        cursor: pointer;
-        z-index: 10;
+    /* Hide desktop remove image button on mobile */
+    #image-preview-container #remove-image-button {
+        display: none !important;
     }
     
     .app-title {
@@ -957,7 +1081,7 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     .chat-footer {
         padding: 10px 15px;
-        gap: 8px; /* Reduced gap */
+        gap: 5px; /* Reduced gap */
     }
     
     .input-area-wrapper {
@@ -996,12 +1120,12 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     .chat-footer {
         padding: 12px 20px;
-        gap: 10px; /* Reduced gap */
+        gap: 5px; /* Reduced gap */
         align-items: center; /* Ensure vertical centering */
     }
     
     .input-area-wrapper {
-        padding-right: 45px; /* Reduced for better spacing */
+        padding-right: 30px; /* Reduced for better spacing */
         min-height: 36px; /* Reduced height */
         border: 1px solid #cccccc; /* Consistent border */
     }
@@ -1107,5 +1231,50 @@ body.dark-mode .uploaded-image-container .edit-btn:hover {
     
     body.dark-mode .chat-header {
         border-radius: 0;
+    }
+
+    /* Style for the new mobile remove image button */
+    .remove-image-mobile {
+        display: none; /* Hidden by default */
+        position: absolute;
+        top: -8px; /* Adjusted to be on the corner of the button */
+        right: -8px; /* Adjusted to be on the corner of the button */
+        background: #e74c3c;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #image-upload-button.has-image .remove-image-mobile {
+        display: flex; /* Show when image is selected */
+    }
+}
+
+/* Desktop specific styles for image upload button and remove icon */
+@media (min-width: 481px) {
+    #image-upload-button .remove-image-mobile {
+        display: none !important; /* Hide mobile remove icon on larger screens */
+    }
+    
+    /* Reset desktop image preview container display (hidden by default) */
+    #image-preview-container {
+        display: none; /* Hidden by default, shown when has-image class is added */
+    }
+    
+    /* Show desktop image preview container when image is selected */
+    #image-preview-container.has-image {
+        display: flex !important; /* Show when image is selected */
+    }
+    
+    /* Show desktop remove button when image is present */
+    #image-preview-container.has-image #remove-image-button {
+        display: flex !important;
     }
 }
