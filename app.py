@@ -38,6 +38,28 @@ except Exception as e:
 # Simple Gemini client using direct API
 gemini_client = None
 
+def get_gemini_client(request=None):
+    """Get Gemini client with API key from environment or request header"""
+    api_key = None
+    
+    # First try to get API key from request header
+    if request and hasattr(request, 'headers') and 'X-API-Key' in request.headers:
+        api_key = request.headers.get('X-API-Key')
+    
+    # Fallback to environment variable
+    if not api_key:
+        api_key = os.environ.get('GEMINI_API_KEY')
+    
+    if api_key:
+        try:
+            return genai.Client(api_key=api_key)
+        except Exception as e:
+            print(f"❌ Gemini client error: {e}")
+            return None
+    else:
+        return None
+
+# Initialize default client for backwards compatibility
 if os.environ.get('GEMINI_API_KEY'):
     try:
         gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
@@ -119,8 +141,15 @@ def generate_image():
                 width=width,
                 height=height
             )
-        elif provider == 'gemini' and gemini_client:
+        elif provider == 'gemini':
             # Use Gemini for image generation
+            client = get_gemini_client(request)
+            if not client:
+                return jsonify({
+                    "status": "error",
+                    "error": "Gemini service unavailable - API key required"
+                }), 503
+            
             try:
                 generator = ImageGenerator()
                 result = generator.generate_image(
@@ -153,14 +182,16 @@ def chat():
     try:
         data = request.get_json()
         
-        if not gemini_client:
+        # Get Gemini client with API key from request or environment
+        client = get_gemini_client(request)
+        if not client:
             return jsonify({
                 "status": "error",
-                "error": "Gemini service unavailable - GEMINI_API_KEY required"
+                "error": "Gemini service unavailable - API key required"
             }), 503
         
         message = data.get('message', '')
-        model = data.get('model', 'gemini-2.0-flash')
+        model = data.get('model', 'gemini-2.5-flash')
         history = data.get('history', [])
         
         if not message:
@@ -191,7 +222,7 @@ def chat():
             # Join all contents for context
             full_conversation = "\n".join(contents[-20:])  # Limit context
             
-            response = gemini_client.models.generate_content(
+            response = client.models.generate_content(
                 model=model,
                 contents=[full_conversation]
             )
@@ -227,14 +258,16 @@ def chat():
 def chat_with_image():
     """Chat with Gemini AI including image support."""
     try:
-        if not gemini_client:
+        # Get Gemini client with API key from request or environment
+        client = get_gemini_client(request)
+        if not client:
             return jsonify({
                 "status": "error",
-                "error": "Gemini service unavailable - GEMINI_API_KEY required"
+                "error": "Gemini service unavailable - API key required"
             }), 503
         
         message = request.form.get('message', '')
-        model = request.form.get('model', 'gemini-2.0-flash')
+        model = request.form.get('model', 'gemini-2.5-flash')
         history = request.form.get('history', '[]')
         
         try:
@@ -283,13 +316,13 @@ def chat_with_image():
                     pil_image = pil_image.convert('RGB')
                 
                 # Use Gemini with image
-                response = gemini_client.models.generate_content(
+                response = client.models.generate_content(
                     model='gemini-2.5-flash',  # Use model that supports images
                     contents=["\n".join(contents), pil_image]
                 )
             else:
                 # Text-only conversation
-                response = gemini_client.models.generate_content(
+                response = client.models.generate_content(
                     model=model,
                     contents=["\n".join(contents)]
                 )
@@ -328,10 +361,12 @@ def analyze_image():
     try:
         data = request.get_json()
         
-        if not gemini_client:
+        # Get Gemini client with API key from request or environment
+        client = get_gemini_client(request)
+        if not client:
             return jsonify({
                 "status": "error",
-                "error": "Image analysis unavailable - GEMINI_API_KEY required"
+                "error": "Image analysis unavailable - API key required"
             }), 503
         
         image_data = data.get('image')  # base64 encoded
@@ -375,7 +410,7 @@ def analyze_image():
             
             # Analyze with Gemini
             prompt = "What is this image? Provide a detailed description including objects, people, scenes, colors, and any notable details."
-            response = gemini_client.models.generate_content(
+            response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=[prompt, pil_image]
             )
@@ -411,10 +446,12 @@ def edit_image():
     try:
         data = request.get_json()
         
-        if not gemini_client:
+        # Get Gemini client with API key from request or environment
+        client = get_gemini_client(request)
+        if not client:
             return jsonify({
                 "status": "error",
-                "error": "Image editing unavailable - GEMINI_API_KEY required"
+                "error": "Image editing unavailable - API key required"
             }), 503
         
         image_data = data.get('image')  # base64 encoded
