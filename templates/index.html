@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Image Generation & Analysis Platform</title>
+    <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/bbinl0/altimo-gemini/refs/heads/main/favicon.jpeg">
+    <link rel="manifest" href="/manifest.json">
     <style>
         * {
             margin: 0;
@@ -32,6 +34,7 @@
             color: white;
             text-align: center;
             padding: 40px 20px;
+            position: relative;
         }
         
         .header h1 {
@@ -260,11 +263,123 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+        
+        @keyframes slideIn {
+            from {transform: translateY(-50px); opacity: 0;}
+            to {transform: translateY(0); opacity: 1;}
+        }
+        
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            cursor: pointer;
+        }
+        
+        .close-btn:hover,
+        .close-btn:focus {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .api-key-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+        
+        .api-key-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .api-status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .api-status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .api-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <button class="settings-btn" onclick="openSettingsModal()" title="Settings">
+                ⚙️
+            </button>
             <h1>🎨Gemini AI One for All </h1>
             <p>Generate, Edit & Analyze Images with Advanced AI</p>
         </div>
@@ -408,10 +523,11 @@
             <div class="form-group">
                 <label for="chatModel">AI Model:</label>
                 <select id="chatModel">
-                    <option value="gemini-2.5-flash-lite" selected>🚀 Gemini 2.5 Flash Lite (Fastest)</option>
-                    <option value="gemini-1.5-flash">⚡ Gemini 1.5 Flash (Fast)</option>
-                    <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Advanced)</option>
                     <option value="gemini-2.5-pro">🧠 Gemini 2.5 Pro (Best)</option>
+                    <option value="gemini-2.5-flash" selected>⚡ Gemini 2.5 Flash (Default)</option>
+                    <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash (Fast)</option>
+                    <option value="gemini-1.5-flash">⚡ Gemini 1.5 Flash (Legacy)</option>
+                    <option value="gemini-2.5-flash-lite">🚀 Gemini 2.5 Flash Lite (Fastest)</option>
                 </select>
             </div>
             
@@ -448,14 +564,92 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeSettingsModal()">&times;</span>
+            <h2>⚙️ Settings</h2>
+            <div id="apiStatus" class="api-status disconnected">
+                ❌ Gemini API key not configured - Advanced features disabled
+            </div>
+            <p>Enter your Gemini API key to enable advanced AI features:</p>
+            <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Enter your Gemini API key..." autocomplete="off">
+            <div style="margin: 20px 0; font-size: 14px; color: #666;">
+                <p>🔐 Your API key is stored securely in your browser and sent directly to the server.</p>
+                <p>📝 Get your free API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #667eea;">Google AI Studio</a></p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn" onclick="saveApiKey()" style="flex: 1;">💾 Save API Key</button>
+                <button type="button" class="btn" onclick="clearApiKey()" style="flex: 1; background: #dc3545;">🗑️ Clear Key</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentChatImage = null;
+        let userApiKey = localStorage.getItem('gemini_api_key') || '';
+
+        // Settings Modal Functions
+        function openSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'block';
+            document.getElementById('apiKeyInput').value = userApiKey ? '••••••••••••••••' : '';
+            checkApiStatus();
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveApiKey() {
+            const keyInput = document.getElementById('apiKeyInput');
+            const newKey = keyInput.value.trim();
+            
+            if (newKey && newKey !== '••••••••••••••••') {
+                userApiKey = newKey;
+                localStorage.setItem('gemini_api_key', userApiKey);
+                alert('✅ API key saved successfully! Gemini AI features are now enabled.');
+                keyInput.value = '••••••••••••••••';
+                checkApiStatus();
+            } else if (!newKey) {
+                alert('⚠️ Please enter a valid API key.');
+            }
+        }
+
+        function clearApiKey() {
+            if (confirm('Are you sure you want to clear the API key? This will disable Gemini AI features.')) {
+                userApiKey = '';
+                localStorage.removeItem('gemini_api_key');
+                document.getElementById('apiKeyInput').value = '';
+                checkApiStatus();
+                alert('🗑️ API key cleared. Gemini AI features are now disabled.');
+            }
+        }
+
+        function checkApiStatus() {
+            const statusDiv = document.getElementById('apiStatus');
+            if (userApiKey) {
+                statusDiv.className = 'api-status connected';
+                statusDiv.textContent = '✅ Gemini API key configured - Advanced features enabled';
+            } else {
+                statusDiv.className = 'api-status disconnected';
+                statusDiv.textContent = '❌ Gemini API key not configured - Advanced features disabled';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                closeSettingsModal();
+            }
+        }
 
         // Ensure DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded - initializing functionality');
             initializeEventListeners();
             initializeChatImagePreview();
+            checkApiStatus();
         });
         
         // Tab switching functionality
@@ -489,9 +683,14 @@
                 hideResults('generate');
                 
                 try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (userApiKey && provider === 'gemini') {
+                        headers['X-API-Key'] = userApiKey;
+                    }
+                    
                     const response = await fetch('/api/generate', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify({
                             prompt: prompt,
                             style: style,
@@ -541,9 +740,14 @@
                     hideResults('edit');
                     
                     try {
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (userApiKey) {
+                            headers['X-API-Key'] = userApiKey;
+                        }
+                        
                         const response = await fetch('/api/edit', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: headers,
                             body: JSON.stringify({
                                 image: base64Image,
                                 edit_prompt: prompt,
@@ -642,9 +846,14 @@
                         requestBody.image_data = currentChatImage;
                     }
                     
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (userApiKey) {
+                        headers['X-API-Key'] = userApiKey;
+                    }
+                    
                     const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify(requestBody)
                     });
                     
@@ -678,9 +887,14 @@
                     requestBody.image_url = imageUrl;
                 }
                 
+                const headers = { 'Content-Type': 'application/json' };
+                if (userApiKey) {
+                    headers['X-API-Key'] = userApiKey;
+                }
+                
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(requestBody)
                 });
                 
